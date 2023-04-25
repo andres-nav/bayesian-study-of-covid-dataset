@@ -1,0 +1,14 @@
+#+title:  Lab Bayesian
+#+author: Andres Navarro
+
+* Dataset Lookup
+
+* Data Cleaning
+
+* Data Exploration
+
+* Frequentist LM
+
+* Bayseian LM
+
+* Bayesian LM with Lasso / Ridge
