@@ -294,32 +294,42 @@ rm(list = setdiff(ls(), c("data")))
 library(caret)
 library(lattice)
 
-index.test = createDataPartition(data$COVID, p = 0.5, list = FALSE)
+data.small = data[sample(nrow(data), size=10000),]
 
-data.test = data[index.test,]
-data.train = data[-index.test,]
+index.test = createDataPartition(data.small$COVID, p = 0.5, list = FALSE)
+
+data.test = data.small[index.test,]
+data.train = data.small[-index.test,]
 
 rm(index.test)
 ```
+
+Now first of all let's try to use all the variables to try to predict if a patient has covid or not.
 
 ```{r}
 fit = train(COVID ~ ., data = data.train, method = "glm", family = "binomial")
 
 summary(fit)
 ```
+Here we see that there are a lot of variables that are useless. As the p value of the betas is really high for most of them.
 
 ```{r}
 confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
 ```
 
+Here, we see that we get an accuracy of 0.6578 so it is not that bad, probably it is because we only have a few significant variables as we saw in the correlation graph. So let's try a simpler model.
+
 ```{r}
-fit = train(COVID ~ USMER + PNEUMONIA + MEDICAL_UNIT + DIABETES + HIPERTENSION + AGE + PATIENT_TYPE, data = data, method = "glm", family = "binomial")
+fit = train(COVID ~ USMER + PNEUMONIA + MEDICAL_UNIT + DIABETES + HIPERTENSION + AGE + PATIENT_TYPE, data = data.train, method = "glm", family = "binomial")
+
 summary(fit)
 ```
+Now it is better but the medical unit for example, it is only relevant the level 2 and also for other.
 
 ```{r}
 confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
 ```
+Here we see that the accuracy is almost the same and the kappa so we have not lost a lot of info.
 
 # Bayesian LM
 
