@@ -9,11 +9,14 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE)
 setwd("/home/me/MEGA/Uni/3YEAR/Q2/01\ Bayesian Analysis/Lab")
+
+library(unix)
+rlimit_as(1e12)  #increases to ~12GB
 ```
 
 # Dataset Lookup
 
-First of all, the objective of this Case Study will be to show the advantages of Bayesian Statistics and the power of Lasso and Ridge regression for small and high dimensional data sets. As it is known, Bayesian Statistics allows as to set up prior believes of our predictors with specific probability distributions. This is really useful when we do not have a lot of data and we have some insights on the data. For this reason I have decided to use a data set with 21 variables and I will be reducing the number of observations to simulate what we are trying to show. This data is about the COVID cases in Mexico and the goal is to predict if a patient has COVID or not.
+First of all, the objective of this Case Study will be to show the advantages of Bayesian Statistics for small data sets and the ability to estimated better the posterior parameters.. As it is known, Bayesian Statistics allows as to set up prior believes of our predictors with specific probability distributions. This is really useful when we do not have a lot of data and we have some insights on the data. For this reason I have decided to use a data set with 21 variables and I will be reducing the number of observations to simulate what we are trying to show. This data is about the COVID cases in Mexico and the goal is to predict if a patient has COVID or not.
 
 [[<https://www.kaggle.com/datasets/meirnizri/covid19-dataset>][Dataset]]
 
@@ -57,14 +60,30 @@ Here we can see a summary of the data, first we have to clean and adapt the data
 ```{r}
 data$COVID = ifelse(data$CLASIFFICATION_FINAL <= 3, 1, 2)
 data = subset(data, select = -c(CLASIFFICATION_FINAL))
+```
 
-data$COVID = factor(data$COVID, labels = c("covid", "not covid"), levels = c(1, 2))
+```{r}
+convertToLogic = function(col.name, df) {
+  index = which(names(df) == col.name)
+  print(index)
+
+  if (length(index) != 0) {
+    df[, index] = ifelse(df[, index] == 2, 0, df[, index])
+    df[, index] = as.logical(df[, index])
+    
+  }
+  
+  return(df)
+}
 ```
 
 This column will tell us if a patient has been diagnosed with COVID or not. Then, I will factor and format all the other variables to adapt them properly.
 
 ```{r}
-data$USMER = factor(data$USMER, labels = c("treated", "not treated"), levels = c(1, 2))
+data = convertToLogic("COVID", data)
+
+data$USMER = ifelse(data$USMER == 2, 0, data$USMER)
+data$USMER = as.logical(data$USMER)
 
 data$MEDICAL_UNIT = factor(data$MEDICAL_UNIT)
 
@@ -199,7 +218,7 @@ $$P ( Y = 1 | data) = \int_{-\infty}^{\infty}{P(Y=1|\theta) \cdot P(\theta | dat
 
 ```{r}
 n = as.numeric(length(data.small$COVID))
-k = as.numeric(length(which(data.small$COVID == "covid")))
+k = as.numeric(length(which(data.small$COVID)))
 print(beta(k+1,n-k)/beta(k, n-k))
 ```
 
@@ -307,31 +326,33 @@ rm(index.test)
 Now first of all let's try to use all the variables to try to predict if a patient has covid or not.
 
 ```{r}
-fit = train(COVID ~ ., data = data.train, method = "glm", family = "binomial")
+fit = train(as.factor(COVID) ~ ., data = data.train, method = "glm", family = "binomial")
 
 summary(fit)
 ```
 Here we see that there are a lot of variables that are useless. As the p value of the betas is really high for most of them.
 
 ```{r}
-confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
+confusionMatrix(as.factor(data.test$COVID), predict(fit, newdata = data.test))
 ```
 
 Here, we see that we get an accuracy of 0.6578 so it is not that bad, probably it is because we only have a few significant variables as we saw in the correlation graph. So let's try a simpler model.
 
 ```{r}
-fit = train(COVID ~ USMER + PNEUMONIA + MEDICAL_UNIT + DIABETES + HIPERTENSION + AGE + PATIENT_TYPE, data = data.train, method = "glm", family = "binomial")
+fit = train(as.factor(COVID) ~ USMER + PNEUMONIA + MEDICAL_UNIT + DIABETES + HIPERTENSION + AGE + PATIENT_TYPE, data = data.train, method = "glm", family = "binomial")
 
 summary(fit)
 ```
 Now it is better but the medical unit for example, it is only relevant the level 2 and also for other.
 
 ```{r}
-confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
+confusionMatrix(as.factor(data.test$COVID), predict(fit, newdata = data.test))
 ```
 Here we see that the accuracy is almost the same and the kappa so we have not lost a lot of info.
 
 # Bayesian LM
+
+The frequentest approach is easier but we if we want to compute confidence intervals for the parameters or predictive intervals we cannot do them. That is why we will be using the Bayesian approach to better study the effects of each variable with covid and get more conclusions. The power of the Bayesian approach is that we obtain the posterior distribution of the parameters so we can study better the relation and the significance. So let's start.
 
 ```{r message=FALSE}
 library(coda)
@@ -340,10 +361,44 @@ library(MCMCpack)
 ```
 
 ```{r}
-rm(list = setdiff(ls(), c("data", "data.test", "data.train")))
+rm(list = setdiff(ls(), c("data", "data.small", "data.test", "data.train")))
 
-fit = MCMClogit(ifelse(as.numeric(COVID) == 1, 0, 1) ~ ., data = data.train, burnin=1000, mcmc=21000)
-
+fit = MCMClogit(COVID ~ ., data = data.train, burnin=1000, mcmc=210000)
 ```
+
+```{r}
+par(mar=c(1, 1, 1, 1))
+plot(fit)
+```
+
+```{r}
+summary(fit)
+```
+
+
+## Lasso
+
+```{r}
+rm(list = setdiff(ls(), c("data", "data.small", "data.test", "data.train")))
+
+library(monomvn)
+
+x = data.frame(data.train$USMER, as.numeric(data.train$MEDICAL_UNIT))
+y = data.train$COVID
+fit = blasso(x, y)
+
+plot(fit, burnin=200)
+```
+
+```{r}
+rm(list = setdiff(ls(), c("data", "data.small", "data.test", "data.train")))
+
+library(R2OpenBUGS)
+
+model = function() {
+  
+}
+```
+
 
 # Bayesian LM with Lasso / Ridge
