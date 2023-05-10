@@ -15,7 +15,7 @@ setwd("/home/me/MEGA/Uni/3YEAR/Q2/01\ Bayesian Analysis/Lab")
 
 First of all, the objective of this Case Study will be to show the advantages of Bayesian Statistics and the power of Lasso and Ridge regression for small and high dimensional data sets. As it is known, Bayesian Statistics allows as to set up prior believes of our predictors with specific probability distributions. This is really useful when we do not have a lot of data and we have some insights on the data. For this reason I have decided to use a data set with 21 variables and I will be reducing the number of observations to simulate what we are trying to show. This data is about the COVID cases in Mexico and the goal is to predict if a patient has COVID or not.
 
-[[<https://www.kaggle.com/datasets/meirnizri/covid19-dataset>][Dataset]]
+[[https://www.kaggle.com/datasets/meirnizri/covid19-dataset][Dataset]]
 
 ```{r}
 rm(list = ls())
@@ -84,7 +84,6 @@ print(length(which(is.na(data))))
 
 hist(rowMeans(is.na(data)), xlab = c("Missing values average by rows"), main = c())
 ```
-
 ```{r}
 indexesEmptyCols = which(colMeans(is.na(data)) != 0)
 
@@ -110,8 +109,8 @@ length(unique(which(is.na(data))))
 summary(data)
 ```
 
-# Data Exploration
 
+# Data Exploration
 ```{r}
 rm(list = setdiff(ls(), "data"))
 
@@ -122,7 +121,6 @@ ggcorr(data, cor_matrix = cor(sapply(data, as.numeric)), label = TRUE)
 ```
 
 Correlation with the covid variable
-
 ```{r}
 corr_covid = sort(cor(sapply(subset(data, select = -c(COVID)), as.numeric))[1,], decreasing = T)
 
@@ -163,7 +161,6 @@ plot(table(data$COVID, data$TOBACCO))
 ```
 
 # Frequentist LM
-
 ```{r}
 rm(list = setdiff(ls(), c("data")))
 
@@ -192,13 +189,11 @@ confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
 fit = train(COVID ~ USMER + PNEUMONIA + MEDICAL_UNIT + DIABETES + HIPERTENSION + AGE + PATIENT_TYPE, data = data, method = "glm", family = "binomial")
 summary(fit)
 ```
-
 ```{r}
 confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
 ```
 
 # Bayesian LM
-
 ```{r message=FALSE}
 library(coda)
 library(MASS)
@@ -214,5 +209,6 @@ summary(fit)
 confusionMatrix(data.test$COVID, predict(fit, newdata = data.test))
 
 ```
+
 
 # Bayesian LM with Lasso / Ridge
