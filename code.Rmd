@@ -2,7 +2,9 @@
 title: "Lab Bayesian"
 author: "Andres Navarro"
 date: "2023-04-25"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -257,24 +259,9 @@ rm(list = setdiff(ls(), c("data", "data.small")))
 library(ggplot2) # GGally
 library(GGally)
 
-ggcorr(data, cor_matrix = cor(sapply(data, as.numeric)), label = TRUE)
 ```
 
-Here we see that there is some correlation between the columns but nothing strong with respect to the COVID variable so lets see if we can identify better which columns have more correlation with the covid column.
-
-```{r}
-corr_covid = sort(cor(sapply(subset(data, select = -c(COVID)), as.numeric))[1,], decreasing = T)
-
-corr = data.frame(corr_covid)
-
-ggplot(corr,aes(x = row.names(corr), y = corr_covid)) + geom_bar(stat = "identity") + 
-  scale_x_discrete(limits= row.names(corr)) +  labs(x = "", y = "covid", title = "Correlations") + 
-  theme(plot.title = element_text(hjust = 0, size = rel(1.5)), axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-Here we see that USMER has the most correlation and this makes sense as it indicated if the pacient has received medication.
-
-Now let's see how the columns distribute with respect to the covid variable.
+Let's see how the columns distribute with respect to the covid variable.
 
 ```{r}
 ggplot(data, aes(x=COVID, y=AGE)) + 
